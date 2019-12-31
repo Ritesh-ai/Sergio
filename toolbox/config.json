@@ -1,0 +1,23 @@
+{	
+	"software_data":{
+		"version":"0.0"
+		, "name":"Software Name"
+		, "log":"log_file_name"
+	}
+
+	, "pgsql":{"host":""
+		, "name":""
+		, "user":""
+		, "pass":""
+	}
+	
+	, "proxy_credentials":{"name":""
+		, "pass":""
+		, "iplist":[]
+	}
+
+	, "slackbot":{"token":""
+		, "log":"#applog"
+	}
+
+}
