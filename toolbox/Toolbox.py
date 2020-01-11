@@ -1,5 +1,5 @@
 import hashlib
-# import dropbox
+import dropbox
 import imaplib
 import tempfile
 from random import random
@@ -37,8 +37,13 @@ import numpy as np
 import datetime as dt
 import collections
 import json
+from gspread import Client
+# from authlib.integrations.requests_client import AssertionSession
 
 import htmlContent
+
+# Set the Credentials.json in OS Environment
+os.environ['credentials.json'] = "credentials.json"
 
 class Toolbox():
 	def __init__(self):
@@ -49,6 +54,15 @@ class Toolbox():
 		self.pp = pprint.PrettyPrinter(indent=4)
 		self.BASE_CONFIG = """{\t\n\t"software_data":{\n\t\t"version":"0.0"\n\t\t, """ \
 						   """"name":"Software Name"\n\t\t, "log":"log_file_name"\n\t}\n}"""
+		
+		self.GSHEET_SCOPES = [
+			'https://spreadsheets.google.com/feeds',
+			'https://www.googleapis.com/auth/drive',
+			]
+
+		# Get the Credentials.json from OS Environment
+		self.GSHEET_CREDS  = os.environ['credentials.json']
+
 
 	def loadConfigFromVar(self, configVar):
 		"""
@@ -105,6 +119,38 @@ class Toolbox():
 		with open(fileLoc) as config_file:
 			self.CONFIG = json.load(config_file)
 
+	def constructHTMLTable(self, **kwargs):
+		report_result 	= kwargs.get('report_result',None)
+		indexState 		= kwargs.get('indexState'	,None)
+		table_html = ""
+		HTML_TABLE_HEADER = f'{HTML_TABLE_HEADER}</tr>'
+		table_html = f'{table_html}{HTML_TABLE_HEADER}'
+		for i1, row in enumerate(report_result):
+			HTML_TABLE_ROW_START = f'<tr>'
+			table_html = f'{table_html}{HTML_TABLE_ROW_START}'
+			HTML_TABLE_ROW = ""
+			for i, cell in enumerate(row):
+				skip_this_row = False
+				###	APPLY formattingList if it exists
+				for curr_fmt in formattingList:
+					if curr_fmt['header'].lower() == cell.lower():
+						if curr_fmt['type'].lower() == 'skip':
+							skip_this_row = True
+							break
+						if curr_fmt.get('criteria','').lower() == str(row[cell]).lower()\
+							or curr_fmt.get('criteria','').lower() == 'all':
+								pre_fmt = curr_fmt['prefmtfunc'](**{'cell':row[cell], 'row':row})
+								if '<td' not in pre_fmt.lower():
+									pre_fmt = f'<td>{pre_fmt}'
+								pst_fmt = curr_fmt['pstfmtfunc'](**{'cell':row[cell], 'row':row})
+								if '/td' not in pst_fmt.lower():
+									pst_fmt = f'{pst_fmt}</td>'
+								HTML_TABLE_ROW = f'{HTML_TABLE_ROW}{pre_fmt}{row[cell]}{pst_fmt}'
+								skip_this_row = True
+				if not skip_this_row:
+					HTML_TABLE_ROW = f'{HTML_TABLE_ROW}<td>{row[cell]}</td>'
+				table_html = f'{table_html}{HTML_TABLE_ROW}'
+		return table_html
 	
 	def buildHTML(self, **kwargs):
 		"""
@@ -116,7 +162,6 @@ class Toolbox():
 		template 		= kwargs.get('template'	    ,None)
 		index 		    = kwargs.get('index'	    ,None)
 
-
 		if not report_name or not report_result or not indexState:
 			print(80*"*")
 			print("A report name, dataset & headers are required to continue")
@@ -124,39 +169,38 @@ class Toolbox():
 			return
 
 		print(f"\t* * *\t{datetime.datetime.now()}	Data collected.  Writing file to HTML")
-
 		########			ADD HEADERS
-		
+
 		final_html = ""
 		if template == 'BuildHTML':
+			########################
+			########################
+			#### This part needs to change with the new ticket.
+			#### HTML should be opened from html file & table_html should be inserted
+			########################
+			########################
+
+			####################################################################################
+			#########	 THIS DOES NOT YET WORK, BUT I WOULD LIKE ALL TEMPLATES TO LOOK LIKE THIS
+			# with open('template/standard.html','r') as t:
+			# 	curr_template = t.read()
+			# final_html = curr_template.format(**{'title':report_name, 'table':table_html})
+			# final_html = final_html.replace('\n','')
+			# final_html = final_html.replace('\r','')
+			# final_html = final_html.replace('\t','')
+			# return final_html
+			####################################################################################
+
 			HTML_header = htmlContent.HTML_header_Build
 			final_html = HTML_header
-			HTML_TABLE_HEADER = "<thead>"
-			for cell in indexState:
-				HTML_TABLE_HEADER = f'{HTML_TABLE_HEADER}<th bgcolor="Yellow"><font size="2" face="verdana"><B>{cell}</b><font></th>'
-			HTML_TABLE_HEADER = f'{HTML_TABLE_HEADER}</thead>'
-
-			final_html = f'{final_html}{HTML_TABLE_HEADER}'
-			HTML_BEGIN_TABLE = "\r\n<tbody>\r\n"
-			final_html = f'{final_html}{HTML_BEGIN_TABLE}'
-
-			for i1, row in enumerate(report_result):
-				if i1 % 2 == 0:
-					highlight_color = "ffffff"
-				else:
-					highlight_color = "e6e6e6"
-				HTML_TABLE_ROW_START = f'<tr bgcolor="#{highlight_color}">'
-				final_html = f'{final_html}{HTML_TABLE_ROW_START}'
-				HTML_TABLE_ROW = ""
-				for i, cell in enumerate(row):
-					HTML_TABLE_ROW = f'{HTML_TABLE_ROW}<td><font size="2" face="verdana">{row[cell]}</font></td>'
-				final_html = f'{final_html}{HTML_TABLE_ROW}'
+			table_html = self.constructHTMLTable(**kwargs)
 			HTML_END = "</tr></tbody></table></body></html>"
-			final_html = f'{final_html}{HTML_END}'
+			final_html = f"{final_html}{table_html}{HTML_END}"
 			final_html = final_html.replace('\n','')
 			final_html = final_html.replace('\r','')
 			final_html = final_html.replace('\t','')
 			return final_html
+
 		elif template == 'BuildHTMLFancy':
 			HTML_header = htmlContent.HTML_header_Build_Fancy
 			final_html = HTML_header
@@ -182,10 +226,10 @@ class Toolbox():
 		elif template == 'buildHTMLFancyResponstable':
 			HTML_header = htmlContent.HTML_header_Build_Responstable
 			final_html = HTML_header
-			HTML_TABLE_HEADER = "<tr>"
+			HTML_TABLE_HEADER = "<thead><tr>"
 			for cell in indexState:
 				HTML_TABLE_HEADER = f'{HTML_TABLE_HEADER}<th>{cell}</th>'
-			HTML_TABLE_HEADER = f'{HTML_TABLE_HEADER}</tr>'
+			HTML_TABLE_HEADER = f'{HTML_TABLE_HEADER}</tr></thead>'
 
 			final_html = f'{final_html}{HTML_TABLE_HEADER}'
 
@@ -196,6 +240,10 @@ class Toolbox():
 				for i, cell in enumerate(row):
 					HTML_TABLE_ROW = f'{HTML_TABLE_ROW}<td>{row[cell]}</td>'
 				final_html = f'{final_html}{HTML_TABLE_ROW}'
+
+			_final_html = final_html.split('</thead>')
+			final_html = _final_html[0]+"</thead><tbody>"+_final_html[1]
+
 			HTML_END = "</tr></tbody></table></body></html>"
 			final_html = f'{final_html}{HTML_END}'
 			return final_html
@@ -204,7 +252,6 @@ class Toolbox():
 			final_html = HTML_header
 
 			TABLE_Head = """<table id='tablelinks"""+str(index)+"""'class="table table-striped table-bordered" style="width:100%">"""
-			js = """<script>$(document).ready(function() {$('#tablelinks"""+str(index)+"""').DataTable();} );</script>"""
 
 			HTML_TABLE_HEADER = "<thead><tr>"
 			for cell in indexState:
@@ -215,19 +262,21 @@ class Toolbox():
 
 			for row in report_result:
 				HTML_TABLE_ROW = ""
-				for index, cell in enumerate(row):
+				for _, cell in enumerate(row):
 					HTML_TABLE_ROW = f'{HTML_TABLE_ROW}<td>{row[cell]}</td>'
 				HTML_TABLE_HEADER = f'<tr>{HTML_TABLE_ROW}</tr>'
 				final_html = f'{final_html}{HTML_TABLE_HEADER}'
 			
 			final_html1 = final_html.split('</thead>')
 			final_html = final_html1[0]+"</thead><tbody>"+final_html1[1]
+			
 			HTML_END = "</tr></tbody></table></body></html>"
 			final_html = f'{final_html}{HTML_END}'
-
+			
+			js = """<script>$(document).ready(function() {$('#tablelinks"""+str(index)+"""').DataTable();} );</script>"""
 			final_html = f'{final_html}{js}'
 			return final_html
-	
+
 
 	def writeToHTMLMulti(self, listXLTabs, template = 'BuildHTML'):
 		buttons = ""
@@ -263,6 +312,127 @@ class Toolbox():
 			'filepath': full_file_path,
 			'filesize': os.path.getsize(full_file_path)
 		}
+
+
+	def writeToGspreadMulti(self, sheet_title, listXLTabs, gsheet_id=None, sharelist=[]):
+		"""
+		To Create the Google Spread Sheet
+		"""
+		if gsheet_id is not None:
+			self.SESSION = self.create_assertion_session_local()
+			self.GCLI = Client(None, self.SESSION)
+			sh = self.GCLI.open_by_key(gsheet_id)
+
+			old_worksheets = [str(sheet).split("'")[1] for sheet in sh.worksheets()]
+
+			for sheet in listXLTabs:
+				if sheet['report_name'] in old_worksheets:
+					self.gsheet_upload_and_write_csv(sh, sheet['report_name'], sheet['report_result'])
+				else:
+					sh.add_worksheet(title=sheet['report_name'], rows="100", cols="20")
+					self.gsheet_upload_and_write_csv(sh, sheet['report_name'], sheet['report_result'])
+			
+		else:
+			self.SESSION = self.create_assertion_session_local()
+			self.GCLI = Client(None, self.SESSION)
+			sh = self.GCLI.create(sheet_title)
+			for email in sharelist:
+				print(email)
+				# To give the permission to the email ID.
+				r = sh.share(email, perm_type='user', role='writer')
+				print(r)
+    		
+			for sheet in listXLTabs:
+				sh.add_worksheet(title=sheet['report_name'], rows="100", cols="20")
+				self.gsheet_upload_and_write_csv(sh, sheet['report_name'], sheet['report_result'])
+
+			worksheet = sh.worksheet("Sheet1")
+			sh.del_worksheet(worksheet)
+
+			# SpreadSheet Url
+			url = "https://docs.google.com/spreadsheets/d/"+str(sh.id)
+			
+			return url
+
+
+	def gsheet_upload_and_write_csv(self, sh, sheetname, datafile):
+		"""
+		Upload the CSV as WorkSheet in Google Spread Sheet
+		"""
+		df = pd.DataFrame(datafile)
+		col = df.columns.values.tolist()
+		val = df.values.tolist()
+		data = [col] + val
+
+		sh.values_update(
+			sheetname,
+			params={'valueInputOption': 'USER_ENTERED'},
+			body={'values': data}
+		)
+
+	def create_assertion_session_local(self, subject=None):
+		# conf = self.GSHEET_CREDS
+
+		with open('../credentials.json') as cred:
+			conf = json.load(cred)
+
+		token_url = conf['token_uri']
+		issuer = conf['client_email']
+		key = conf['private_key']
+		key_id = conf.get('private_key_id')
+
+		header = {'alg': 'RS256'}
+		if key_id:
+			header['kid'] = key_id
+
+		# Google puts scope in payload
+		claims = {'scope': ' '.join(self.GSHEET_SCOPES)}
+		return AssertionSession(
+			grant_type=AssertionSession.JWT_BEARER_GRANT_TYPE,
+			token_url=token_url,
+			token_endpoint="https://oauth2.googleapis.com/token",
+			issuer=issuer,
+			audience=token_url,
+			claims=claims,
+			subject=subject,
+			key=key,
+			header=header,
+		)
+
+
+	def dropbox_delete_outdated(self, remote_dir,  minutes_old = (60*24*7)):
+		"""
+			Deletes outdated drobpox files either by the minutes_old parameter
+			Or by the filename.  If the filename has an expiration date codified
+			as below, it will delete it even if that time is below the general time.
+				_exp_30m_
+				_exp_7d_
+				_exp_12h_
+		"""
+		hour_offset = 5
+		self.DROPBOX = dropbox.Dropbox(self.CONFIG['dropbox']['token'])
+		response = self.DROPBOX.files_list_folder(remote_dir)
+		re_expdate = re.compile("_exp_(\d{1,6})([m|d|h])_")
+		###	 GET EXPIRATION DATE FROM FILE VIA REGEX
+		for file in response.entries:
+			###	DELETE FILES WHICH MATCH THE GENERAL TIME
+			age_minutes = (datetime.datetime.now() - file.server_modified) // datetime.timedelta(minutes=1) + 60 * hour_offset
+			if age_minutes > minutes_old:
+				print(f"Deleting:\t{file.name}")
+				self.DROPBOX.files_delete(file.path_display)
+			else:
+				### Search filename for pattern & extract new expiration date.
+				search_result = re.search(re_expdate, file.name)
+				if search_result:
+					if search_result.group(2) == "m":
+						exp_minutes = int(search_result.group(1))
+					elif search_result.group(2) == "h":
+						exp_minutes = int(search_result.group(1)) * 60
+					elif search_result.group(2) == "d":
+						exp_minutes = int(search_result.group(1)) * 60 * 24
+					if exp_minutes > minutes_old:
+						print(f"Deleting:\t{file.name}")
+						self.DROPBOX.files_delete(file.path_display)
 
 	def dropbox_store(self, local_filepath, remote_file_path):
 		"""

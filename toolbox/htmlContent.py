@@ -8,17 +8,9 @@ HTML_header_Build_Fancy = """
 				  <meta charset="UTF-8">
 				  <title>Console</title>
 				  <link rel="stylesheet" href="http://hlx.sh/static_assets/lpb/template/css/warehouse_dashboard_style.css">
+				  <meta name="viewport" content="initial-scale=1.0; maximum-scale=1.0; width=device-width;">
 
 				</head>
-				<body>
-				<!-- partial:index.partial.html -->
-				<html lang="en">
-				<head>
-					<meta charset="utf-8" />
-					<title>Console</title>
-					<meta name="viewport" content="initial-scale=1.0; maximum-scale=1.0; width=device-width;">
-				</head>
-
 				<body>
 				<table class="table-fill">
 				"""
@@ -32,7 +24,24 @@ HTML_header_Build_Responstable = """
 			<title>Responstable 2.0: a responsive table solution</title>
 			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css">
 			<link rel="stylesheet" href="http://hlx.sh/static_assets/lpb/template/css/warehouse_dashboard_responstable_style.css">
+			<script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.9.1/jquery.tablesorter.min.js"></script>
 
+			<script>
+				$(function(){
+					$(".responstable").tablesorter();
+					});
+			</script>
+			<style>
+			table{
+				border-spacing: 0;
+				border-collapse: collapse;
+				text-align:center;
+				width:100%;
+				}
+			.table-th-first{
+					background-color:#167F92!important;color:white
+				}
+			</style>
 			</head>
 			<body>
 

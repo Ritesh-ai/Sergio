@@ -1,10 +1,12 @@
 import sys
-sys.path.append('../')
-from Toolbox import Toolbox 
+import os
+import pandas as pd
+from Toolbox import Toolbox
+
 
 def main():
     tlbx = Toolbox()
-    
+    sheet_title = "Csv Collection"
     listXLTabs = [{
 					'report_name':'Sheet name'
 					, 'report_result':[{'Company Name': 'Amazon', 'Buyer': 'Hair dryer', 'ProductID': 'HAIR23143AM'}
@@ -28,7 +30,7 @@ def main():
                 ]
 
 	# Templates Options : BuildHTML, BuildHTMLFancy, buildHTMLFancyResponstable, sortable
-    htmlresult = tlbx.writeToHTMLMulti(listXLTabs, template = 'sortable')
+    htmlresult = tlbx.writeToGspreadMulti(sheet_title, listXLTabs, gsheet_id='1sLNpKtWlii_F4qa0zKC8KJHlewZcD1vDxQmNJN2K2bs', sharelist = ['itest4999@gmail.com'])
 
     print(htmlresult)
 

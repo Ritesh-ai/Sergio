@@ -1,11 +1,11 @@
 ###	Import custom modules
 import sys
 sys.path.append('../')
-from Toolbox import Toolbox
+from toolboxdummy import buildHTML
 import datetime
 
 def main():
-	tlbx = Toolbox()
+	# tlbx = Toolbox()
 	listXLTabs = {
 					'report_name':'Sheet name'
 					, 'report_result':[{'Company Name': 'My Company', 'Buyer': 'Unknown', 'ProductID': 'POOROY2N4KIT'}
@@ -15,7 +15,8 @@ def main():
 					, 'template' : 'BuildHTML'				# BuildHTML, BuildHTMLFancy, buildHTMLFancyResponstable, sortable
 					, 'index': 0
 				}
-	final_html = tlbx.buildHTML(**listXLTabs)
+	# final_html = tlbx.buildHTML(**listXLTabs)
+	final_html = buildHTML(**listXLTabs)
 	print(final_html)
 
 	with open('data.html','w') as f:
